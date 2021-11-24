@@ -156,11 +156,19 @@ class CanvasFFT(QFC):
 
     def inputData(self, data_fft: dict):
         self.ax_lines = []
+        self.ax_lines_stack = []
         n = len(data_fft)
+        maximum = 0
         for i, t in enumerate(data_fft):
             data = data_fft[t]
+            maximum = max(maximum, max(data[1]))
+        for i, t in list(enumerate(data_fft))[::-1]:
+            data = data_fft[t]
             self.ax_lines.append(self.figure.axes[0].plot(
-                data[0], data[1], label=t, c=plt.cm.turbo_r(0.9 * (i+1) / n), lw=1.3)[0])
+                data[0], data[1], label=t, c=plt.cm.turbo(0.9 * (i+1) / n), lw=1.3)[0])
+            self.ax_lines_stack.append(self.figure.axes[0].plot(
+                data[0], data[1] + 0.7*i*maximum, label=t, c=plt.cm.turbo(0.9 * (i+1) / n), lw=1.3)[0])
+        self.ax_lines = self.ax_lines[::-1]
         self.figure.axes[0].lines = []
 
     def update(self, num, r):
@@ -172,9 +180,12 @@ class CanvasFFT(QFC):
         ax.legend()
         self.figure.canvas.draw()
 
-    def showAll(self, r):
+    def showAll(self, r, stack=False):
         ax = self.figure.axes[0]
-        ax.lines = self.ax_lines
+        if stack:
+            ax.lines = self.ax_lines_stack
+        else:
+            ax.lines = self.ax_lines
         ax.relim()
         ax.autoscale()
         ax.set_xlim(r[0], r[1])

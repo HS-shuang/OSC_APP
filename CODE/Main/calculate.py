@@ -10,6 +10,7 @@ e = 1.6e-19
 h_bar = 1.05457e-34
 me = 9.11e-31
 
+
 def get_phy(m,F, TD = None):
     kf = (2*e*F/h_bar)**0.5
     sf = 2*pi*e*F/h_bar   

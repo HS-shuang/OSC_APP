@@ -23,19 +23,24 @@ def func(B, frequency, m, td=1, t=2, g=0, delta=0):
     return -B**(-0.5) * RT * RD * RS * np.sin(2 * np.pi * (frequency / B - delta))
 
 
-def make_data(B, f_num=1, poly_order=3, rdio=[1, 2], f_range=[[15, 45]]):
+def make_data(B, f_num=1, poly_order=3, rdio=[1, 2], f_range=[[15, 45]],
+              m_range=[0.4, 0.8], t_range=[1, 2], td_range=[2, 4]):
     frequency, m, td, t = np.random.rand(4, f_num)
     poly_pa = np.random.rand(poly_order)-0.3
     rdio = np.random.randint(*rdio)
 
+    gv = lambda rang, rand: rang[0]+(rang[1]-rang[0])*rand
     osc = 0
+
     for num in range(f_num):
-        f_min, f_max = f_range[num]
-        f = f_min + f_max * frequency[num]
-        osc += func(B, f, 0.4 + 0.4*m[0], 2 + 2*td[0], 1+1*t[0])
+        f0 = gv(f_range[num], frequency[num])
+        m0 = gv(m_range, m[num])
+        td0 = gv(td_range, td[num])
+        t0 = gv(t_range, t[num])
+        osc += func(B, f0, m0, td0, t0)
     max_osc = max(osc)
 
-    poly = np.poly1d([*poly_pa, 0])(x/max(x))
+    poly = np.poly1d([*poly_pa, 0])(B/max(B))
     nom1 = max(abs(poly))
     poly *= rdio * max_osc / nom1
     poly_pa *= rdio * max_osc / nom1

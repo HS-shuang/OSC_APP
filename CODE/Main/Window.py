@@ -388,7 +388,7 @@ class Win(QMainWindow):
             self.canvasFFT.update(self.backPage, fft_range)
         else:
             if self.dataType == 'R':
-                pass
+                self.canvasFFT.showAll(fft_range, stack=True)
             elif self.dataType == 'T':
                 self.canvasFFT.showAll(fft_range)
 

@@ -37,7 +37,3 @@ def my_filter(data_pre, filter_type='sg', filter_order=2, wn=0.01, sg_wn=2):
 
     f_filter = interp1d(filter_x, filter_y, fill_value=0, bounds_error=False)
     return f_filter, lambda x: f(x)-f_filter(x)
-
-
-f, f2 = my_filter(np.ones((2, 1000)))
-print(help(f))
