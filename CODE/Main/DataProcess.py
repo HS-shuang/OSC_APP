@@ -37,6 +37,9 @@ class R_B:
         self.TListOr = getT(file_path)
         self.or_data = pd.read_csv(file_path, encoding='gbk')
         self.TList = np.array(TList)
+        self.data_m = None
+        self.data_m_fit = None
+        self.m = None
 
     def background(self, mode='up', range=[15, 31], smooth_range=[1, 32],
                  filter_type='sg', filter_order=2, wn=100, sg_wn=5, range_T={}, xtype='1/B', show_background=1,
@@ -67,16 +70,20 @@ class R_B:
 
             if xtype == '1/B':
                 DataPre[0], ibMin, ibMax = 1/DataPre[0], 1 / range[1], 1 / range[0]
-            elif xtype == 'log':
+                x_f = x_f1 = lambda x: 1/x
+            elif xtype == 'log(B)':
                 DataPre[0], ibMin, ibMax = np.log(DataPre[0]), np.log(range[0]), np.log(range[1])
+                x_f1 = lambda x: np.exp(x)
+                x_f = lambda x: np.log(x)
             else:
                 ibMin, ibMax = range[0], range[1]
+                x_f = x_f1 = lambda x: x
 
             self.data[T] = DataPre
             if calcu_use_diff:
                 DataPre = np.array([DataPre[0][:-1], np.diff(DataPre[1])/np.diff(DataPre[0])])
 
-            f_filter, f_osc = data_prepare.my_filter(DataPre, filter_type, filter_order, wn, sg_wn)
+            f_filter, f_osc = data_prepare.my_filter(DataPre, filter_type, filter_order, wn, sg_wn, x_f=x_f, x_f1=x_f1)
 
             N = len(DataPre[0])
 

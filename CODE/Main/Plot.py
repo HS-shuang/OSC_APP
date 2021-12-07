@@ -128,6 +128,14 @@ class CanvasBack(QFC):
         ax2.plot(x, y, c='k', lw=2)
         ax2.plot(x, y, c='r', lw=1.5)
 
+    def change_x_type(self, text):
+        if text == 'B':
+            self.figure.axes[1].set_xlabel('B (T)')
+        elif text == '1/B': self.figure.axes[1].set_xlabel('1/B (1/T)')
+        elif text == 'log(B)': self.figure.axes[1].set_xlabel('log(B)')
+
+        self.figure.canvas.draw()
+
     def update(self, data_raw, data_filter, data_osc, data_osc_calcu, t):
         self.figure.suptitle(f'{t}')
         axes = self.figure.axes
@@ -153,6 +161,12 @@ class CanvasFFT(QFC):
         ax.grid(b=None, which='both', axis='both', ls='--')
         ax.set_ylabel('Amplitude (a.u.)')
         ax.set_xlabel('F (T)')
+
+    def change_x_type(self, text):
+        if text == 'B': self.figure.axes[0].set_xlabel('F (1/T)')
+        elif text == '1/B': self.figure.axes[0].set_xlabel('F (T)')
+        elif text == 'log(B)': self.figure.axes[0].set_xlabel('F (T)')
+        self.figure.canvas.draw()
 
     def inputData(self, data_fft: dict):
         self.ax_lines = []

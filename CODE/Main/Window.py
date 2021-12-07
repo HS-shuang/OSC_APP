@@ -13,6 +13,7 @@ from CODE.Main import data_prepare
 import scipy.signal as sig
 from CODE.Main.MyWidgets import MypeakL, ChooseTemL
 from CODE.Main.Plot import CanvasBack, CanvasFFT, CanvasFitM
+import os
 
 
 class Win(QMainWindow):
@@ -30,6 +31,7 @@ class Win(QMainWindow):
         self.scrollWidget.setLayout(self.Vbox)
 
         self.dataType = 'T'
+        self.x_type = '1/B'
         self.filter = 'polynomial'
         self.backPage = 0
         self.fitPage = 0
@@ -41,6 +43,8 @@ class Win(QMainWindow):
         self.initWidgets()
         self.initUI()
         self.initFitMUI()
+
+        self.save_dir = None
 
         self.statusBar().showMessage('Ready')
 
@@ -60,8 +64,9 @@ class Win(QMainWindow):
 
     def initWidgets(self):
         self.FilePath = QLineEdit(self)
-        self.FilePath.setText('D:/科研数据/NbP 振荡/DATA/S1-xx-B-变温.csv')
-        self.TList = getT(self.FilePath.text())
+        # self.FilePath.setText('D:/科研数据/NbP 振荡/DATA/S1-xx-B-变温.csv')
+        # self.TList = getT(self.FilePath.text())
+        self.TList = []
         self.btnImp = QPushButton('...', self)
         self.btnImp.clicked.connect(self.showImportDialog)
 
@@ -77,6 +82,13 @@ class Win(QMainWindow):
         self.modeComB.addItem('up')
         self.modeComB.addItem('down')
         self.modeComB.activated[str].connect(self.changeMode)
+
+        # 振荡类型
+        self.xComB = QComboBox(self)
+        self.xComB.addItem('1/B')
+        self.xComB.addItem('B')
+        self.xComB.addItem('log(B)')
+        self.xComB.activated[str].connect(self.change_x_type)
 
         # 平滑范围
         self.rangeSmoothLE = [QDoubleSpinBox(), QDoubleSpinBox()]
@@ -156,18 +168,16 @@ class Win(QMainWindow):
         fileMenu.addMenu(impMenu)
         fileMenu.addAction(self.exitAct())
 
-        viewMenu.addAction(self.showDataAct())
-
         runBack = self.run1Act()
         runMenu.addAction(runBack)
 
         # 工具栏
-        self.addToolBar('Exit').addAction(self.exitAct())
-        self.addToolBar('Save').addAction(self.saveAct())
+        self.addToolBar('退出').addAction(self.exitAct())
+        self.addToolBar('保存').addAction(self.saveAct())
 
         # 部件
         nx = QPushButton('->', self)
-        nx.setMaximumHeight(self.height()/40)
+        nx.setMaximumHeight(self.height() / 40)
         nx.clicked.connect(self.changePage)
         self.allFFT = QCheckBox('show all')
         self.allFFT.setChecked(True)
@@ -179,7 +189,7 @@ class Win(QMainWindow):
         self.chooseTL = ChooseTemL(self.TList)
 
         rangeSub, rangeSmooth, DT = QHBoxLayout(), QHBoxLayout(), QHBoxLayout()
-        modeL, filterL = QHBoxLayout(), QVBoxLayout()
+        xtypeL, modeL, filterL = QHBoxLayout(), QHBoxLayout(), QVBoxLayout()
 
         rangeSmooth.addWidget(QLabel('平滑范围:'))
         rangeSmooth.addWidget(self.rangeSmoothLE[0])
@@ -196,6 +206,9 @@ class Win(QMainWindow):
 
         modeL.addWidget(QLabel('升场/降场:'))
         modeL.addWidget(self.modeComB)
+
+        xtypeL.addWidget(QLabel('振荡类型:'))
+        xtypeL.addWidget(self.xComB)
 
         filterChoose, filterPa = QHBoxLayout(), QHBoxLayout()
         filterChoose.addWidget(QLabel('背底扣除:'))
@@ -242,6 +255,7 @@ class Win(QMainWindow):
         paL.addLayout(self.chooseTL)
         paL.addLayout(DT)
         paL.addLayout(modeL)
+        paL.addLayout(xtypeL)
         paL.addLayout(rangeSmooth)
         paL.addLayout(rangeSub)
         paL.addLayout(filterL)
@@ -344,9 +358,30 @@ class Win(QMainWindow):
             self.analysisFile(fname[0])
 
     def showSaveDialog(self):
+        if self.x_type == 'B': f = lambda x: x
+        elif self.x_type == '1/B': f = lambda x: 1/x
+        elif self.x_type == 'log(B)': f = lambda x: np.exp(x)
+
         if self.fft:
-            save(self.fft.data_fft_calcu, 'fft.csv')
-            save(self.fft.data_raw, 'fft_raw.csv')
+            if self.save_dir:
+                save_dir = self.save_dir
+            else:
+                save_dir = self.FilePath.text()
+            title = self.FilePath.text().split('/')[-1]
+            f_name = QFileDialog.getExistingDirectory(self, '导出数据', save_dir)
+
+            if f_name:
+                self.save_dir = f_name
+                path = f_name + f'/{title}'
+                if not os.path.exists(path):
+                    os.mkdir(path)
+                save_osc(self.fft.data_raw, self.fft.data_osc_f, filename=path+r'\osc.csv', f_x=f)
+                save(self.fft.fft, filename=path+r'\fft.csv')
+                if self.fft.data_m_fit:
+                    save(self.fft.data_m_fit, filename=path+r'\mass_fit.csv')
+                if self.fft.data_m:
+                    save(self.fft.data_m, filename=path+r'\mass_point.csv')
+
 
     def analysisFile(self, file_path):
         self.TList = getT(file_path)
@@ -354,13 +389,6 @@ class Win(QMainWindow):
         self.fft = R_B(file_path, self.TList)
         first = data_prepare.read_data(self.fft.or_data, 0)
         self.rangeLE[1].setValue(max(first[0])//0.1/10 - 0.1)
-
-    def showDataAct(self):
-        act = QAction('Show background', self, checkable=True)
-        act.setStatusTip('是否展示去除背底')
-        act.setChecked(True)
-        act.triggered.connect(lambda x: print('showData:', x))
-        return act
 
     def showChangedf(self):
         if self.dfCheck.checkState():
@@ -378,8 +406,11 @@ class Win(QMainWindow):
 
         # 背底
         d_r = self.fft.data_raw[t]
-        self.canvasRB.update([1/d_r[0], d_r[1]],
-                             [1/d_r[0], self.fft.data_filter_f[t](d_r[0])],
+        if self.x_type == 'B': f = lambda x: x
+        elif self.x_type == '1/B': f = lambda x: 1/x
+        elif self.x_type == 'log(B)': f = lambda x: np.exp(x)
+        self.canvasRB.update([f(d_r[0]), d_r[1]],
+                             [f(d_r[0]), self.fft.data_filter_f[t](d_r[0])],
                              [d_r[0], self.fft.data_osc_f[t](d_r[0])],
                              self.fft.data_fft_calcu[t],
                              t)
@@ -415,6 +446,11 @@ class Win(QMainWindow):
     def changeMode(self, text):
         pass
 
+    def change_x_type(self, text):
+        self.x_type = text
+        self.canvasRB.change_x_type(text)
+        self.canvasFFT.change_x_type(text)
+
     def changeFilter(self, text):
         if text == 'sg':
             self.filterParameter[0].setValue(3)
@@ -445,6 +481,7 @@ class Win(QMainWindow):
         filterParameter = [x.value() for x in self.filterParameter]
         self.fft.TList = np.array(self.chooseTL.choosing)
         self.df_value = self.df.value() if self.dfCheck.checkState() else None
+
         self.fft.background(range=range, smooth_range=rangeSmooth,
                        show_background=1,
                        mode=self.modeComB.currentText(),
@@ -453,7 +490,7 @@ class Win(QMainWindow):
                        filter_order=filterParameter[0],
                        wn=filterParameter[1],
                        range_T={},
-                       xtype='1/B',
+                       xtype=self.x_type,
                        calcu_use_diff=self.dBCheck.checkState() == 2,
                        Win=self.Win,
                        df=self.df_value)
@@ -478,16 +515,28 @@ class Win(QMainWindow):
             self.fft.find_peak(peak_dic)
             self.my_phy = self.fft.fit_m(p0=m_p0)
 
-        self.canvasFitM.inputData( self.fft.data_m_fit, self.fft.data_m, self.fft.m)
+        self.canvasFitM.inputData(self.fft.data_m_fit, self.fft.data_m, self.fft.m)
         self.changePageFit()
         self.statusBar().showMessage('Finished', 1000)
 
-def save(data: dict, path):
+
+def save_osc(data_raw: dict, data_osc_f, filename, f_x=None):
+    out = pd.DataFrame()
+    for key in data_raw.keys():
+        current = pd.DataFrame()
+        current[None] = data_raw[key][0] if not f_x else f_x(data_raw[key][0])
+        current[str(key)] = data_osc_f[key](data_raw[key][0])
+        out = pd.concat((out, current), axis=1)
+    out.to_csv(filename, index=None)
+
+
+def save(data: dict, filename):
     out = pd.DataFrame()
     for key in data.keys():
         current = pd.DataFrame()
-        current[str(key) + 'x'] = 1/data[key][0]
+        current[None] = data[key][0]
         current[str(key)] = data[key][1]
         out = pd.concat((out, current), axis=1)
-    out.to_csv(path, index=None)
+    out.to_csv(filename, index=None)
+
 

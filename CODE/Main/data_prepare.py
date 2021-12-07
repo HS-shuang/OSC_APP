@@ -18,7 +18,7 @@ def read_data(data, i):     # 读取第i组数据
     return ret
 
 
-def my_filter(data_pre, filter_type='sg', filter_order=2, wn=0.01, sg_wn=2):
+def my_filter(data_pre, filter_type='sg', filter_order=2, wn=0.01, sg_wn=2, x_f=None, x_f1=None):
     f = interp1d(data_pre[0], data_pre[1], fill_value=0, bounds_error=False)
     n = len(data_pre[0])
     filter_x = np.linspace(min(data_pre[0]), max(data_pre[0]), 8*n)
@@ -31,9 +31,9 @@ def my_filter(data_pre, filter_type='sg', filter_order=2, wn=0.01, sg_wn=2):
         filter_y = sg(f(filter_x), int(sg_wn/31*n)*2+1, filter_order)
 
     elif filter_type == 'polynomial':
-        filter_x1 = np.linspace(min(1/data_pre[0]), max(1/data_pre[0]), 8*n)
-        poly_pa = np.polyfit(filter_x1, f(1/filter_x1), filter_order)
-        filter_y = np.poly1d(poly_pa)(1/filter_x)
+        filter_x1 = np.linspace(min(x_f1(data_pre[0])), max(x_f1(data_pre[0])), 8*n)
+        poly_pa = np.polyfit(filter_x1, f(x_f(filter_x1)), filter_order)
+        filter_y = np.poly1d(poly_pa)(x_f1(filter_x))
 
     f_filter = interp1d(filter_x, filter_y, fill_value=0, bounds_error=False)
     return f_filter, lambda x: f(x)-f_filter(x)
