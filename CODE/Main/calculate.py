@@ -18,15 +18,13 @@ def get_phy(m,F, TD = None):
     Ef = m*me*vf**2
     ns = (1/3*pi*pi)*(2*e*F/h_bar)**(3/2)
     if TD == None:
-        pa = [F,ns,m,kf/1e8,sf/1e18,vf/1e5,Ef/e]
+        pa = {'F': F, 'n': ns, 'm': m, 'kf': kf/1e8, 'sf': sf/1e8,
+              'vf': vf/1e5, 'Ef': Ef/e, 't': None, 'TD': None, 'l': None, 'miu': None}
     else:
         tar = h_bar/(2*pi*kb*TD)
         l = tar*vf
         miu = e*tar/(m*me)
-        pa = [F,ns,m,kf/1e8,sf/1e18,vf/1e5,Ef/e,tar*1e13,TD,l*1e9,miu*1e4]
-
-    print('kf: %.4g'%kf)
-    print('sf: %.4g'%sf)
-    print('vf: %.4g'%vf)
-    print('Ef: %.4g'%(Ef/e)) 
+        pa = {'F': F, 'n': ns, 'm': m, 'kf': kf / 1e8, 'sf': sf / 1e8,
+              'vf': vf / 1e5, 'Ef': Ef / e, 't': tar*1e13, 'TD': l*1e9,
+              'l': l*1e9, 'miu': miu*1e4}
     return pa

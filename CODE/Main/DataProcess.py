@@ -37,9 +37,12 @@ class R_B:
         self.TListOr = getT(file_path)
         self.or_data = pd.read_csv(file_path, encoding='gbk')
         self.TList = np.array(TList)
+        self.fft = None
         self.data_m = None
         self.data_m_fit = None
         self.m = None
+        self.TD = None
+        self.peakdic = None
 
     def background(self, mode='up', range=[15, 31], smooth_range=[1, 32],
                  filter_type='sg', filter_order=2, wn=100, sg_wn=5, range_T={}, xtype='1/B', show_background=1,
@@ -143,7 +146,6 @@ class R_B:
             x = np.array(x)
             x = x.reshape(-1, 2).T
             self.peakdic[ii+1] = x
-        for i in range(len(self.peakdic)):
             self.TD.append(None)
         return self.peakdic
 
@@ -163,16 +165,24 @@ class R_B:
                 return f(pa, self.TList) - data[1]
 
             pa = leastsq(loss, p0)[0]
+
+            self.data_m[peak_num] = np.vstack((self.TList, data[1]))
+            Tplot = np.linspace(min(self.TList), max(self.TList), 100)
+            self.data_m_fit[peak_num] = np.vstack((Tplot, f(pa, Tplot)))
+
             B = sum(self.range)/2
             # 用25T计算
             m = h_bar*e*B*pa[1]/(2*pi*pi*kb*me)
             F = data[0][peak_num-1]
-            phy = calculate.get_phy(m, F, TD=self.TD[peak_num - 1])
-            self.data_m[peak_num] = np.vstack((self.TList, data[1]))
-            Tplot = np.linspace(min(self.TList), max(self.TList), 100)
-            self.data_m_fit[peak_num] = np.vstack((Tplot, f(pa, Tplot)))
             self.m[peak_num] = m
-            myphy = [phy] if peak_num == 1 else np.vstack((myphy, phy))
+
+            phy = calculate.get_phy(m, F, TD=self.TD[peak_num - 1])
+            if peak_num == 1: myphy = {c: [val] for c, val in phy.items()}
+            else:
+                for c in phy:
+                    myphy[c].append(phy[c])
+
+        self.myphy = myphy
         return myphy
 
     def show_fft(self, T=4, FFT_range=[0, 3000]):
@@ -234,7 +244,7 @@ class R_B:
         self.FigFFT['all'] = fig
         return fig
 
-    def fit_FFT(self, T=1.8, peak_num=5, f_range=[0, 6000], mym=[], F=[], x0=[]):
+    def fit_FFT(self, T=1.8, f_range=[0, 6000], mym=[], F=[], F_param=[], x0=[]):
         data = self.fft_calcu[T]
         data = data[:, :int(len(data[0])/2)]
 
@@ -244,16 +254,13 @@ class R_B:
         fftdata = data[:, ind]
 
         n = len(F)
-        print(T)
-
         def f(pa):
             x = 1/datar[0]
             y = 0
-            # F = pa[3*n:4*n]
             for i in range(n):
                 lam = 2*pi*pi*kb*T*mym[i] * me / (h_bar*e*x)
-                lamd = 2*pi*pi*kb * pa[i] * mym[i] * me / (h_bar*e*x)
-                y += pa[i+n] * 5/2 * (x/(2*F[i]))**(1/2) * lam/np.sinh(lam) * np.exp(-lamd) * np.cos(2*pi*F[i]/x + pa[i+2*n])
+                lamd = 2*pi*pi*kb * pa[3*i] * mym[i] * me / (h_bar*e*x)
+                y += pa[3*i + 1] * 5/2 * (x/(2*F[i]))**(1/2) * lam/np.sinh(lam) * np.exp(-lamd) * np.cos(2*pi*F[i]/x + pa[3*i + 2])
             return y
 
         m = int(len(datar[0])/2)
@@ -264,40 +271,28 @@ class R_B:
             myfft[-1] = myfft[-1]*2
             return abs(myfft[ind] - fftdata[1])
 
-        pa = leastsq(loss, x0=x0, maxfev=50000)[0]
+        pa = leastsq(loss, x0=x0)[0]
         calcu_fft = abs(fft(f(pa)))[:m][ind]/m
         calcu_fft[0] = calcu_fft[0]*2
         calcu_fft[-1] = calcu_fft[-1]*2
 
-        f1 = plt.figure()
-        for i in range(n):
-            x = 0.014+0.23*(np.mod(i, 5))
-            if i >= 5:
-                y = 1-0.05
-            else:
-                y = 1
-            f1.text(x, y, '$T_{D%s}=%.2f$' % (i+1, pa[i]), c='k', fontsize=15)
-        # plt.title('fit of FFT')
-        plt.scatter(fftdata[0], abs(fftdata[1]), ec='k', fc='w', s=7)
-        plt.plot(fftdata[0], abs(fftdata[1]), c='C1', label='exp')
-        plt.plot(fftdata[0], calcu_fft, c='r', label='fit')
-        plt.xlabel('Frequecy(T)')
-        plt.ylabel('Amplitude')
-        plt.legend()
-        self.FigFitFFT[T] = f1
+        self.fft_fit_data = [fftdata[0], abs(fftdata[1])]
+        self.fft_fit_curve = [fftdata[0], calcu_fft]
 
         if self.Win:
             datar[1] /= self.Win(len(datar[1]))
             fit = f(pa)/self.Win(len(datar[1]))
 
-        self.FigFitFFT[str(T)+'-2'] = plt.figure(dpi=400)
-        plt.scatter(datar[0], datar[1], ec='b', fc='w', s=3)
-        plt.plot(datar[0], datar[1], c='b', lw=1)
-        plt.plot(datar[0], fit, c='r', label='fit')
-        plt.legend()
+        self.TD = pa[::3]
+        for i in range(len(F)):
+            phy = calculate.get_phy(mym[i], F_param[i], TD=self.TD[i])
+            if i == 0:
+                myphy = {c: [val] for c, val in phy.items()}
+            else:
+                for c in phy:
+                    myphy[c].append(phy[c])
 
-        self.TD = pa[:n]
-        print(pa)
+        return myphy
 
 
 def getT(file):

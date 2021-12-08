@@ -245,6 +245,31 @@ class CanvasFitM(QFC):
         self.figure.canvas.draw()
 
 
+class CanvasFitFFT(QFC):
+    def __init__(self):
+        super().__init__()
+        self.initFig()
+
+    def initFig(self):
+        ax = self.figure.add_subplot()
+        self.my_ax(ax)
+        ax.grid(b=None, which='both', axis='both', ls='--')
+        ax.set_ylabel('Amplitude (a.u.)')
+        ax.set_xlabel('F (T)')
+
+    def draw_data(self, curve_fft, curve_fit, r=None, label=''):
+        ax = self.figure.axes[0]
+        ax.lines = []
+        ax.plot(curve_fft[0], curve_fft[1], c='k', label=label)
+        ax.plot(curve_fit[0], curve_fit[1], c='r', label='fit')
+        ax.legend()
+        ax.relim()
+        ax.autoscale()
+        if r:
+            ax.set_xlim(r[0], r[1])
+        self.figure.canvas.draw()
+
+
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
     import sys

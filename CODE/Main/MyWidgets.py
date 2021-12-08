@@ -2,8 +2,11 @@
 # @Time: 2021/11/8 20:17
 # @Author: HS
 
-from PyQt5.QtWidgets import QLineEdit, QHBoxLayout, QGridLayout, QLabel, \
-    QPushButton, QScrollArea, QWidget, QGridLayout
+from PyQt5.QtWidgets import QLineEdit, QHBoxLayout, QLabel, \
+    QPushButton, QScrollArea, QWidget, QGridLayout, QVBoxLayout, \
+    QCheckBox, QDoubleSpinBox
+
+from math import log10
 
 
 class MypeakL(QGridLayout):
@@ -14,6 +17,7 @@ class MypeakL(QGridLayout):
         self.peaks = [Peak('peak1'), Peak('peak2')]
         self.initWid()
         self.initUI()
+        self.setSpacing(10)
 
     def initWid(self):
         self.btnAdd = QPushButton('+')
@@ -51,6 +55,39 @@ class Peak(QHBoxLayout):
         self.addWidget(self.range[0])
         self.addWidget(QLabel('~'))
         self.addWidget(self.range[1])
+
+
+class MyFitPeakL(QVBoxLayout):
+
+    def __init__(self):
+        super().__init__()
+        self.peaks = []
+        self.set_peaks()
+
+    def set_peaks(self, peaks={}):
+        # 没有删除干净 注意
+        while self.peaks:
+            deletL(self.peaks.pop())
+        for peak, val in peaks.items():
+            peakL = FitPeak(peak, val)
+            self.addLayout(peakL)
+            self.peaks.append(peakL)
+
+
+class FitPeak(QHBoxLayout):
+    def __init__(self, peak, val):
+        super(FitPeak, self).__init__()
+        self.setSpacing(0)
+        self.check_box = QCheckBox(f'{peak}={val:.3g}+')
+        self.check_box.setChecked(True)
+        self.delta = QDoubleSpinBox()
+        self.delta.setMinimum(-val)
+        self.delta.setMaximum(val)
+        self.delta.setDecimals(2-log10(val)//1)
+        self.delta.setSingleStep(val/500)
+
+        self.addWidget(self.check_box)
+        self.addWidget(self.delta)
 
 
 def deletL(myLayout):
