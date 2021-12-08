@@ -605,7 +605,7 @@ class Win(QMainWindow):
         F_all = [val[0][T_ind] for n, val in self.fft.peakdic.items()]
         F_check = [F_all[i] for i in peaks_ind]
         F_check_cal = [F_all[i] + self.fit_FFT_peaks.peaks[i].delta.value() for i in peaks_ind]
-        print(self.my_phy)
+
         mym = [self.my_phy['m'][i] for i in peaks_ind]
 
         self.my_phy = self.fft.fit_FFT(T=self.fft.TList[T_ind], f_range=[LE.value() for LE in self.rangeFitLE],

@@ -205,7 +205,6 @@ class R_B:
                         self.peakdic[ii+1][1][self.TList == T], c='r')
         plt.xlim(FFT_range[0], FFT_range[1])
 
-        print(T, ':', f[y_f == max(y_f)])
         self.FigFFT[T] = fig
         return fig
 
